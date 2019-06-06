@@ -1,0 +1,22 @@
+---
+title: "R code for problem III"
+output: html_notebook
+---
+
+```{r}
+# loading data into mydat drop the car name column
+library(data.table)
+library(dplyr)
+library(tidyr)
+mydat <- fread('http://archive.ics.uci.edu/ml/machine-learning-databases/auto-mpg/auto-mpg.data', header = F )
+head(mydat)
+mydat <- mydat[,1,drop=FALSE]
+
+mydat %>%
+  separate(V1, c('mpg', 'cylinders', 'displacement', 'horsepower', 'weight', 'acceleration','model', 'origin'), sep="\\s+")
+```
+```{r}
+# run PCA on mydat
+mydat.pr
+```
+
