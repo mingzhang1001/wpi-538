@@ -5,18 +5,56 @@ output: html_notebook
 
 ```{r}
 # loading data into mydat drop the car name column
-library(data.table)
-library(dplyr)
-library(tidyr)
-mydat <- fread('http://archive.ics.uci.edu/ml/machine-learning-databases/auto-mpg/auto-mpg.data', header = F )
-head(mydat)
-mydat <- mydat[,1,drop=FALSE]
+library(readr)
+library(lattice)
+auto_mpg <- read_table2("https://archive.ics.uci.edu/ml/machine-learning-databases/auto-mpg/auto-mpg.data", 
+     col_names = FALSE, col_types = cols(X10 = col_skip(), 
+         X11 = col_skip(), X4 = col_double(), 
+         X5 = col_number(), X6 = col_number(), 
+         X9 = col_character())
+     )
+auto_mpg$X9 <- gsub("\"","", auto_mpg$X9)
+names(auto_mpg) <- c('mpg', 'cylinders', 'displacement', 'horsepower', 'weight', 'acceleration','model', 'origin', 'car_marker')
+auto_mpg <- auto_mpg[complete.cases(auto_mpg),]
+splom(~auto_mpg[1:8])
+```
 
-mydat %>%
-  separate(V1, c('mpg', 'cylinders', 'displacement', 'horsepower', 'weight', 'acceleration','model', 'origin'), sep="\\s+")
+
+```{r}
+auto_mpg.pr <- prcomp(auto_mpg[c(1:8)], center = TRUE, scale = TRUE)
+summary(auto_mpg.pr)
+```
+
+```{r}
+auto_mpg.pr
+screeplot(auto_mpg.pr, npcs=8)
+screeplot(auto_mpg.pr, type = "l", npcs = 8, main = "Screeplot of the 8 PCs")
+
+cumpro <- cumsum(auto_mpg.pr$sdev^2 / sum(auto_mpg.pr$sdev^2))
+plot(cumpro[0:8], xlab = "PC #", ylab = "Amount of explained variance", main = "Cumulative variance plot")
+abline(v = 4, col="blue", lty=4)
+abline(h = 0.95217, col="blue", lty=4)
+legend("topleft", legend=c("Cut-off @ PC4"),
+       col=c("blue"), lty=5, cex=0.6)
+```
+
+
+```{r}
+```
+
+
+```{r}
+
+mydat <- sapply( mydat, as.numeric )
+```
+
+
+```{r}
+
 ```
 ```{r}
 # run PCA on mydat
-mydat.pr
+mydat.pr <- prcomp(mydat, center = TRUE, scale = TRUE)
+summary(mydat.pr)
 ```
 

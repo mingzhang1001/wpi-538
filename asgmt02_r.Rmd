@@ -1,0 +1,85 @@
+```{r include=FALSE} 
+knitr::opts_chunk$set(echo = FALSE) 
+```
+
+```{r message=FALSE, warning=FALSE}
+library(dplyr)
+library(corrplot)
+library(RColorBrewer)
+library(rpart.plot)
+library(tictoc)
+
+
+# Machine learning packages:
+library(caret)
+library(gbm)
+library(OneR)
+```
+
+
+
+## Pre-processing
+
+```{r message=FALSE, warning=FALSE}
+heart.disease <- read.csv("https://archive.ics.uci.edu/ml/machine-learning-databases/heart-disease/processed.cleveland.data", header = FALSE, na.strings = '?')
+names(heart.disease) <- c("age", "sex", "cp", "trestbps", "chol", "fbs", "restecg", "thalach", "exang", "oldpeak", "slope", "ca", "thal", "num")
+```
+
+The Cleveland dataset contains `r nrow(heart.disease)` instances, and contains the reduced set of attributes (`r dim(heart.disease)[2]` including the target variable). The goal is to predict the presence of heart disease in the patient. Experiments with the Cleveland database have concentrated on simply attempting to distinguish presence (values 1,2,3,4) from absence (value 0), and thus we have converted the target variable into a boolean flag (0 = absent, 1 = present). Previous experiments achieved an accuracy of 74-77% for the prediction of heart disease, according to the dataset description.
+
+```{r echo=FALSE}
+heart.disease$num = heart.disease$num > 0
+```
+
+
+```{r echo=FALSE}
+# Recode nominal attributes for the classification experiements (and for better readability) ==> heart.disease.cl dataframe
+heart.disease.cl = heart.disease
+heart.disease.cl$num = factor(heart.disease$num > 0)
+
+heart.disease.cl$sex = factor(heart.disease$sex, labels = c("female", "male"))
+# cp: chest pain type
+heart.disease.cl$cp = factor(heart.disease$cp, labels = c("typical angina", "atypical angina", "non-anginal pain", "asymptomatic"))
+# fbs: (fasting blood sugar > 120 mg/dl)
+heart.disease.cl$fbs = heart.disease$fbs == 1
+# restecg: resting electrocardiographic results
+heart.disease.cl$restecg = factor(heart.disease$restecg, labels = c("normal", "ST-T wave abnormality", "left ventricular hypertrophy"))
+# exang: exercise induced angina
+heart.disease.cl$exang = heart.disease$exang == 1
+# slope: the slope of the peak exercise ST segment
+heart.disease.cl$slope = factor(heart.disease$slope, labels = c("upsloping", "flat", "downsloping"))
+# ca: number of major vessels (0-3) colored by flourosopy
+heart.disease.cl$ca = as.factor(heart.disease$ca)
+# thal: Thalium stress test result
+heart.disease.cl$thal = factor(heart.disease$thal, labels = c("normal", "fixed defect", "reversable defect"))
+```
+
+
+The distribution of the variables is as follows:
+
+```{r}
+summary(heart.disease.cl)
+#summary(heart.disease$thal %>% as.factor())
+```
+
+We can see, that the`ca` attribute has 4 missing values, and the `thal` attribute has 2. Altogether, `r heart.disease %>% filter(is.na(ca) | is.na(thal)) %>% count() %>% pull(n)` instances contain missing data, which we decided to remove from the dataset. Overall, there is a `r round(mean(heart.disease$num), 2) * 100`% probability, that a disease was diagnosed.
+
+
+```{r  message=FALSE, warning=FALSE}
+heart.disease <- na.omit(heart.disease)
+heart.disease.cl <- na.omit(heart.disease.cl)
+```
+
+In the following we show a visual analysis of the target variable distribution per gender and the Thalium stress test results. It can be seen, that altoghether men were more likely to be diagnosed with a disease, than women. As per the Thalium stress test, a normal result was a good indicator for no disease, however, there was a significant difference between the genders, as men were twice as likely to be diagnosed even with normal Thalium stress test results. The fixed and reversable defect results were, on the other hand, a stron indicator for being diagnosed with the disease. Overall, men were much more likely to achieve a non-normal test result here, and accordingly to be diagnosed as well.
+
+```{r  message=FALSE, warning=FALSE}
+ggplot(heart.disease.cl, aes(x = num)) + geom_bar() + facet_grid(sex ~ thal) + xlab("Diagnosis of heart disease") + ggtitle("Distribution of the target variable by Thalium stress test results and gender")
+```
+
+
+Finally, we investigate the (linear) correlation between the variables of the dataset. The following plot shows the calculated correlation coefficients. What we can see from the plot, is that the `thalach` and `thal` variables are correlated to most of the variables, similarly to the target variable, `num`. We can conclude, that the target variable is correlated with the `thalach`, `ca`, `cp`, `exang`, `oldpeak`, and `thal` variables the strongest.
+
+```{r}
+corrplot(cor(heart.disease), type = "upper", order = "hclust",
+         col = brewer.pal(n = 10, name = "RdYlBu"))
+```
